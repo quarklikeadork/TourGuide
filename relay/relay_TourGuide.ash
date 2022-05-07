@@ -2,7 +2,7 @@
 
 since 20.6; //the earliest main release that supports the changes to the terrarium that came with the release of the Melodramedary
 //These settings are for development. Don't worry about editing them.
-string __version = "1.9.2";
+string __version = "2.0.0";
 
 //Path and name of the .js file. In case you change either.
 string __javascript = "TourGuide/TourGuide.js";
@@ -49887,7 +49887,9 @@ void IOTMComprehensiveCartographyGenerateTasks(ChecklistEntry [int] task_entries
 RegisterResourceGenerationFunction("IOTMCartographyMapsGenerateResource");
 void IOTMCartographyMapsGenerateResource(ChecklistEntry [int] resource_entries)
 {
-	if (!(__misc_state["in run"] && in_ronin())) return;
+	boolean in_grey_you = my_class() == $class[grey goo]; // Grey You cannot use cartography.
+
+	if (!(__misc_state["in run"] && in_ronin()) || in_grey_you) return;
     
     int maps_left = clampi(3 - get_property_int("_monstersMapped"), 0, 3);
     if (maps_left > 0 && my_path_id() != PATH_POCKET_FAMILIARS)
@@ -50098,7 +50100,9 @@ void IOTMCommerceGhostGenerateTasks(ChecklistEntry [int] task_entries, Checklist
 	item commerce_item = get_property_item("commerceGhostItem");
 	int commerce_statgain1 = my_level() * 20;
 	int commerce_statgain2 = my_level() * 25;
-	if (__misc_state["in run"] && $familiar[Ghost of Crimbo Commerce].familiar_is_usable())
+	boolean in_grey_you = my_class() == $class[grey goo]; // Grey You gains zero stats from your commerce ghost.
+
+	if (__misc_state["in run"] && $familiar[Ghost of Crimbo Commerce].familiar_is_usable() && !in_grey_you)
 	{
 		// Title
 		string url = "familiar.php";
@@ -50725,6 +50729,8 @@ void IOTMCosmicBowlingBallGenerateTasks(ChecklistEntry [int] task_entries, Check
 	int bowlingUses = get_property_int("_cosmicBowlingSkillsUsed");
 	int bowlingCooldown2 = bowlingUses * 2 + 6;
 	int bowlingCooldown = get_property_int("cosmicBowlingBallReturnCombats");
+	boolean bowlingSupernag = get_property_boolean("tourGuideBowlingBallSupernag");
+
 	string url;
 	if (bowlingCooldown == 0)
 	{
@@ -50733,6 +50739,15 @@ void IOTMCosmicBowlingBallGenerateTasks(ChecklistEntry [int] task_entries, Check
 		description.listAppend(HTMLGenerateSpanFont("You can bowl again next turn!", "blue"));
 		description.listAppend("Next use has " + HTMLGenerateSpanOfClass(bowlingCooldown2, "r_bold") + " duration.");
 		optional_task_entries.listAppend(ChecklistEntryMake("__item cosmic bowling ball", url, ChecklistSubentryMake("Cosmic bowling ball returns next combat", "", description), -11));
+	}
+
+	if (bowlingCooldown < 0 && bowlingSupernag)
+	{
+		string [int] description;
+		string main_title = "Cosmic bowling ball usable";
+		description.listAppend(HTMLGenerateSpanFont("You can bowl again -- right now!", "blue"));
+		description.listAppend("Next use has " + HTMLGenerateSpanOfClass(bowlingCooldown2, "r_bold") + " duration.");
+		optional_task_entries.listAppend(ChecklistEntryMake("__item cosmic bowling ball", url, ChecklistSubentryMake("Cosmic bowling ball is in your inventory!", "", description), -11));
 	}
 }
 
@@ -50980,7 +50995,46 @@ void IOTMGreyGooseResource(ChecklistEntry [int] resource_entries)
         resource_entries.listAppend(entry);
     }
 }
-
+//Unbreakable Umbrella
+RegisterResourceGenerationFunction("IOTMUnbreakableUmbrellaGenerateResource");
+void IOTMUnbreakableUmbrellaGenerateResource(ChecklistEntry [int] resource_entries)
+{
+    item unbrella = lookupItem("unbreakable umbrella");
+    if (!unbrella.have()) return;
+    if (!__misc_state["in run"]) return; 
+    string url;
+	string unbrellaMode = get_property("umbrellaState");
+	string unbrellaEnchant;
+	string [int] description;
+    url = invSearch("unbreakable umbrella");
+    // Title
+        string main_title = "Umbrella machine " + HTMLGenerateSpanFont("B", "red") + "roke";
+        description.listAppend("Understanda" + HTMLGenerateSpanFont("B", "red") + "le have a nice day.");
+		
+		if (unbrellaMode == "broken") {
+			int modifiedML = ceil(numeric_modifier("monster level") * 1.25);
+			unbrellaEnchant = "+25% ML. Unbrella-boosted ML will be " + modifiedML + ".";
+		}
+		else if (unbrellaMode == "forward") {
+			unbrellaEnchant = "+25 DR shield";
+		}
+		else if (unbrellaMode == "bucket") {
+			unbrellaEnchant = "+25% item drops";
+		}
+		else if (unbrellaMode == "pitchfork") {
+			unbrellaEnchant = "+25 Weapon Damage";
+		}
+		else if (unbrellaMode == "twirling") {
+			unbrellaEnchant = "+25 Spell Damage";
+		}
+		else if (unbrellaMode == "cocoon") {
+			unbrellaEnchant = "-10% Combat Frequency";
+		}
+		description.listAppend(HTMLGenerateSpanOfClass("Current enchantment: ", "r_bold") + unbrellaMode);
+		description.listAppend(HTMLGenerateSpanFont(unbrellaEnchant, "blue") + "");
+		resource_entries.listAppend(ChecklistEntryMake("__item unbreakable umbrella", "inventory.php?action=useumbrella&pwd=" + my_hash(), ChecklistSubentryMake(main_title, "", description)));
+}
+// Missing: MayDay Package. Simple tile, just need to make it lol.
 
 RegisterTaskGenerationFunction("PathActuallyEdtheUndyingGenerateTasks");
 void PathActuallyEdtheUndyingGenerateTasks(ChecklistEntry [int] task_entries, ChecklistEntry [int] optional_task_entries, ChecklistEntry [int] future_task_entries)
